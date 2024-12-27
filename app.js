@@ -5,15 +5,30 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const userModel = require("./models/user");
 const postModel = require("./models/post");
+const crypto = require('crypto');
+const path = require("path");
+const multerconfig = require('./config/multerconfig');
+const upload = require("./config/multerconfig");
 
 app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get("/", (req, res) => {
     res.render("index");
+})
+
+app.get("/profile/upload", (req, res) => {
+    res.render("profileupload");
+})
+
+app.post("/upload",isLogedin,upload.single("image"), async (req, res) => {
+    let user =await userModel.findOne({ email: req.user.email });
+    user.profile = req.file.filename;
+    await user.save();
+    res.redirect("/profile");
 })
 
 app.get("/login", (req, res) => {
@@ -71,7 +86,7 @@ app.post("/register", async (req, res) => {
 
                 const token = jwt.sign({ email: email, id: newUser._id }, "secretkey");
                 res.cookie("token", token);
-                res.status(201).send(`User registered successfully: ${newUser.name}`);
+                res.redirect("/profile");
             });
         });
     }
@@ -113,8 +128,6 @@ function isLogedin(req, res, next) {
         next();
     }
 }
-
-
 
 app.listen(3000, () => {
     console.log("Server is running on port 3000");
